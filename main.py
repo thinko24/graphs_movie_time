@@ -267,7 +267,7 @@ fig3.update_traces(
 )
 
 # 4. 관객수 상위 3일 위치에 주석(Annotations) 및 마커 추가
-for idx, row in top3_days.iterrows():
+for idx, row in top3_days.reset_index().iterrows():
     date_str = row["날짜"].strftime("%Y-%m-%d")
     val = row["일관객"]
 
@@ -285,7 +285,7 @@ for idx, row in top3_days.iterrows():
     fig3.add_annotation(
         x=row["날짜"],
         y=val,
-        text=f"<b>TOP {idx+1 if 'idx' in locals() else ''}</b><br>{date_str}<br>({val:,.0f}명)",
+        text=f"<b>TOP {idx+1}</b><br>{date_str}<br>({val:,.0f}명)",
         showarrow=True,
         arrowhead=2,
         arrowsize=1,
@@ -327,6 +327,80 @@ st.text_area(
     placeholder="예: 특정 연휴나 주말에 TOP 10 영화의 총 관객수가 크게 집중되는 모습을 볼 수 있다.",
     height=80,
     key="graph3_comment"
+)
+
+
+# =========================================================
+# 그래프 4. 흥행 TOP 10 영화 및 10위권 차트인 날수 (가로 막대)
+# =========================================================
+st.divider()
+
+st.header("📊 그래프 4. 흥행 TOP 10 영화 및 10위권 진입 날수")
+st.write(
+    "기간 동안 **총 일관객 수가 많은 상위 10개 영화**를 가로 막대그래프로 비교합니다. "
+    "막대에 마우스를 올리면 해당 영화가 **10위권(TOP 10)에 든 일수(날수)**를 함께 볼 수 있습니다."
+)
+
+# 1. 영화별 총 일관객 합계 및 10위권(순위 <= 10) 차트인 날수 계산
+movie_summary = (
+    df[df["순위"] <= 10]
+    .groupby("영화명", as_index=False)
+    .agg(
+        총일관객=("일관객", "sum"),
+        차트인날수=("날짜", "nunique")
+    )
+    .sort_values("총일관객", ascending=False)
+    .head(10)
+)
+
+# 2. Plotly 가로 막대그래프 생성을 위해 순서 정렬 (관객 수 많은 것이 맨 위에 오도록)
+movie_summary_sorted = movie_summary.sort_values("총일관객", ascending=True)
+
+fig4 = px.bar(
+    movie_summary_sorted,
+    x="총일관객",
+    y="영화명",
+    orientation="h",
+    title="기간 내 총 일관객 수 TOP 10 영화",
+    labels={
+        "총일관객": "총 일관객 수(명)",
+        "영화명": "영화명",
+        "차트인날수": "10위권 진입 날수"
+    },
+    text_auto=",.0f",
+    color="총일관객",
+    color_continuous_scale="Blues",
+    hover_data={"차트인날수": True, "총일관객": ":,"}
+)
+
+fig4.update_traces(
+    hovertemplate=
+    "<b>영화명</b>: %{y}<br>"
+    "<b>총 일관객 수</b>: %{x:,}명<br>"
+    "<b>10위권 진입 날수</b>: %{customdata[0]}일"
+    "<extra></extra>"
+)
+
+fig4.update_layout(
+    xaxis_title="총 일관객 수(명)",
+    yaxis_title="영화명",
+    coloraxis_showscale=False,
+    height=500
+)
+
+st.plotly_chart(
+    fig4,
+    use_container_width=True
+)
+
+
+st.subheader("📝 이 그래프로 알 수 있는 것")
+
+st.text_area(
+    "그래프 4의 특징을 한 문장으로 작성하세요.",
+    placeholder="예: 총 관객 수가 비슷한 영화라도 10위권 내 상영 날수에는 큰 차이가 나타날 수 있다.",
+    height=80,
+    key="graph4_comment"
 )
 
 
