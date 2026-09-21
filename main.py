@@ -226,18 +226,105 @@ st.text_area(
 
 
 # =========================================================
-# 그래프 3을 위한 구역
+# 그래프 3. 날짜별 TOP 10 일관객 합계 (영역 그래프)
 # =========================================================
 st.divider()
 
-st.header("📊 그래프 3. 다음 그래프")
-st.info("여기에 세 번째 그래프를 추가할 예정입니다.")
+st.header("📊 그래프 3. 날짜별 TOP 10 일관객 합계 추이")
+st.write(
+    "매일 **박스오피스 상위 10개 영화의 일관객 합계**를 산출하여 극장가의 전체적인 활성도를 영역 그래프로 보여줍니다."
+)
+
+# 1. 날짜별 10위권(순위 <= 10) 데이터 필터링 후 합계 계산
+top10_daily = (
+    df[df["순위"] <= 10]
+    .groupby("날짜", as_index=False)["일관객"]
+    .sum()
+    .sort_values("날짜")
+)
+
+# 2. 일관객 합계 상위 3일 추출
+top3_days = top10_daily.sort_values("일관객", ascending=False).head(3)
+
+# 3. 영역 그래프(Area chart) 생성
+fig3 = px.area(
+    top10_daily,
+    x="날짜",
+    y="일관객",
+    title="날짜별 TOP 10 영화 일관객 합계 추이 (영역 그래프)",
+    labels={
+        "날짜": "날짜",
+        "일관객": "TOP 10 일관객 합계(명)"
+    }
+)
+
+fig3.update_traces(
+    line_color="#1f77b4",
+    hovertemplate=
+    "<b>날짜</b>: %{x|%Y-%m-%d}<br>"
+    "<b>TOP 10 일관객 합계</b>: %{y:,}명"
+    "<extra></extra>"
+)
+
+# 4. 관객수 상위 3일 위치에 주석(Annotations) 및 마커 추가
+for idx, row in top3_days.iterrows():
+    date_str = row["날짜"].strftime("%Y-%m-%d")
+    val = row["일관객"]
+
+    # 상위 3일 포인트 표시 (붉은색 점)
+    fig3.add_scatter(
+        x=[row["날짜"]],
+        y=[val],
+        mode="markers",
+        marker=dict(color="red", size=9),
+        showlegend=False,
+        hoverinfo="skip"
+    )
+
+    # 텍스트 주석 추가
+    fig3.add_annotation(
+        x=row["날짜"],
+        y=val,
+        text=f"<b>TOP {idx+1 if 'idx' in locals() else ''}</b><br>{date_str}<br>({val:,.0f}명)",
+        showarrow=True,
+        arrowhead=2,
+        arrowsize=1,
+        arrowcolor="red",
+        ax=0,
+        ay=-45,
+        bordercolor="red",
+        borderwidth=1,
+        borderpad=4,
+        bgcolor="rgba(255, 255, 255, 0.8)",
+        opacity=0.9
+    )
+
+fig3.update_layout(
+    xaxis_title="날짜",
+    yaxis_title="TOP 10 일관객 합계(명)",
+    hovermode="x unified"
+)
+
+st.plotly_chart(
+    fig3,
+    use_container_width=True
+)
+
+# 상위 3일 정보 요약 표시
+st.caption("🏆 **TOP 10 일관객 합계가 가장 컸던 TOP 3 날짜**")
+top3_display = top3_days.copy()
+top3_display["날짜"] = top3_display["날짜"].dt.strftime("%Y-%m-%d")
+top3_display["일관객"] = top3_display["일관객"].map(lambda x: f"{x:,}명")
+top3_display.columns = ["날짜", "TOP 10 총 관객 수"]
+top3_display.index = [1, 2, 3]
+st.dataframe(top3_display, use_container_width=True)
+
 
 st.subheader("📝 이 그래프로 알 수 있는 것")
 
 st.text_area(
     "그래프 3의 특징을 한 문장으로 작성하세요.",
-    placeholder="그래프를 추가한 후 알게 된 내용을 한 문장으로 작성하세요.",
+    placeholder="예: 특정 연휴나 주말에 TOP 10 영화의 총 관객수가 크게 집중되는 모습을 볼 수 있다.",
     height=80,
     key="graph3_comment"
 )
