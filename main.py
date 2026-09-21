@@ -353,7 +353,7 @@ movie_summary = (
     .head(10)
 )
 
-# 2. Plotly 가로 막대그래프 생성을 위해 순서 정렬 (관객 수 많은 것이 맨 위에 오도록)
+# 2. Plotly 가로 막대그래프 생성을 위해 순서 정렬
 movie_summary_sorted = movie_summary.sort_values("총일관객", ascending=True)
 
 fig4 = px.bar(
@@ -401,6 +401,79 @@ st.text_area(
     placeholder="예: 총 관객 수가 비슷한 영화라도 10위권 내 상영 날수에는 큰 차이가 나타날 수 있다.",
     height=80,
     key="graph4_comment"
+)
+
+
+# =========================================================
+# 그래프 5. 월×요일별 일관객 합계 히트맵
+# =========================================================
+st.divider()
+
+st.header("🔥 그래프 5. 월×요일별 일관객 합계 (히트맵)")
+st.write(
+    "각 **월과 요일의 조합에 따른 총 일관객 수**를 히트맵으로 시각화합니다. "
+    "색이 **진할수록** 해당 월·요일의 관객 수 합계가 많음을 의미합니다."
+)
+
+# 1. 월 및 요일 파생변수 생성
+df_heatmap = df.copy()
+df_heatmap["월"] = df_heatmap["날짜"].dt.month.astype(str) + "월"
+df_heatmap["요일_code"] = df_heatmap["날짜"].dt.dayofweek  # 월:0 ~ 일:6
+
+weekday_names = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"]
+df_heatmap["요일"] = df_heatmap["요일_code"].map(lambda x: weekday_names[x])
+
+# 2. 월 및 요일 순서 보정을 위한 Pivot 테이블 생성
+# 행: 월, 열: 요일(월~일 순서)
+heatmap_pivot = df_heatmap.pivot_table(
+    index="월",
+    columns="요일",
+    values="일관객",
+    aggfunc="sum"
+).fillna(0)
+
+# 월 정렬 (1월~12월 순서 유지)
+months_order = [f"{m}월" for m in range(1, 13) if f"{m}월" in heatmap_pivot.index]
+heatmap_pivot = heatmap_pivot.reindex(index=months_order, columns=weekday_names)
+
+# 3. Plotly Heatmap 생성
+fig5 = px.imshow(
+    heatmap_pivot,
+    labels=dict(x="요일", y="월", color="일관객 합계"),
+    x=weekday_names,
+    y=heatmap_pivot.index,
+    color_continuous_scale="Purples",  # 관객이 많을수록 진한 보라색
+    text_auto=",.0f",
+    title="월×요일별 일관객 합계 히트맵"
+)
+
+fig5.update_traces(
+    hovertemplate=
+    "<b>월</b>: %{y}<br>"
+    "<b>요일</b>: %{x}<br>"
+    "<b>일관객 합계</b>: %{z:,}명"
+    "<extra></extra>"
+)
+
+fig5.update_layout(
+    xaxis_title="요일",
+    yaxis_title="월",
+    height=550
+)
+
+st.plotly_chart(
+    fig5,
+    use_container_width=True
+)
+
+
+st.subheader("📝 이 그래프로 알 수 있는 것")
+
+st.text_area(
+    "그래프 5의 특징을 한 문장으로 작성하세요.",
+    placeholder="예: 특정 월의 주말(토·일)에 관객수가 크게 몰리는 경향을 한눈에 파악할 수 있다.",
+    height=80,
+    key="graph5_comment"
 )
 
 
